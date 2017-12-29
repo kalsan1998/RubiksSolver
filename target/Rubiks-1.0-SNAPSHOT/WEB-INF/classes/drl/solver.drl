@@ -1,0 +1,566 @@
+import rubiks.Rotator
+import rubiks.rubikscube.CubePiece
+import rubiks.rubikscube.Cube
+import rubiks.util.RubiksColour
+import rubiks.util.RubiksDirection
+import rubiks.solver.RubiksResults
+import rubiks.Rotator
+import java.util.Map
+import java.util.List
+import java.util.Collections
+import java.util.Arrays
+
+global RubiksColour baseColour;
+global RubiksColour topColour;
+global Map<RubiksDirection,RubiksColour> directionToColourMap;
+global Map<RubiksColour,RubiksDirection> colourToDirectionMap;
+global RubiksDirection[] directions;
+global Cube cube;
+global RubiksResults movesExecuted;
+global List<CubePiece> piecesNotInPlace;
+global String phase;
+
+rule "Edge piece not in place"
+agenda-group "get bottom edge pieces not in place"
+when
+    $cube: Cube()
+    $allPieces: Object() from $cube.getAllPiecesList()
+    $baseEdgePiece: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, containsValue(baseColour)) from $allPieces
+    $firstNotMatchingDirection: RubiksDirection($baseEdgePiece.get(this) != directionToColourMap.get(this)) from $baseEdgePiece.keySet()
+then
+    System.out.println("adding piece" + $baseEdgePiece.toString());
+    piecesNotInPlace.add($baseEdgePiece);
+    retract($cube)
+end
+
+rule "Edge piece has base facing bottom but needs to turn"
+agenda-group "solve bottom edges"
+no-loop
+when
+    $edgePiece: CubePiece(getBottomColour() == baseColour)
+    $secondaryColourPieceLocation: RubiksDirection($edgePiece.get(this) != baseColour, $edgePiece.get(this) != directionToColourMap.get(this)) from $edgePiece.keySet()
+then
+    String move = $secondaryColourPieceLocation.getMoveLetter() + "2";
+    Rotator.rotateFace(cube,move);
+    movesExecuted.addMove(phase,move);
+    System.out.println(move +"\n" + drools.getRule().getName());
+    update($edgePiece);
+end
+
+rule "Edge piece is on correct side with correct orientation but needs rotation"
+agenda-group "solve bottom edges"
+no-loop
+when
+    $edgePiece: CubePiece(getBottomColour() != baseColour)
+    $rotateSide: RubiksDirection(directionToColourMap.get(this) == $edgePiece.get(this), this != RubiksDirection.UP) from $edgePiece.keySet()
+    $baseColourDirectionOnPiece: RubiksDirection($edgePiece.get(this) == baseColour) from $edgePiece.keySet()
+then
+    String move = Rotator.getRotationNeeded($rotateSide,$baseColourDirectionOnPiece, RubiksDirection.DOWN);
+    Rotator.rotateFace(cube,move);
+    movesExecuted.addMove(phase,move);
+    System.out.println(move +"\n" + drools.getRule().getName());
+    retract($edgePiece);
+end
+
+rule "Edge piece is on top with secondary colour facing outward (not on correct side)"
+agenda-group "solve bottom edges"
+no-loop
+when
+    $edgePiece: CubePiece(getTopColour() == baseColour)
+
+    $otherColourDirectionPiece: RubiksDirection(this != RubiksDirection.UP, $edgePiece.get(this) != directionToColourMap.get(this)) from $edgePiece.keySet()
+    $otherColourDirectionCube: RubiksDirection(directionToColourMap.get(this) == $edgePiece.get($otherColourDirectionPiece)) from directions
+
+then
+    String move = Rotator.getRotationNeeded(RubiksDirection.UP,$otherColourDirectionPiece,$otherColourDirectionCube);
+    Rotator.rotateFace(cube,move);
+    movesExecuted.addMove(phase,move);
+    System.out.println(move +"\n" + drools.getRule().getName());
+    update($edgePiece);
+end
+
+rule "Edge piece is on adjacent secondary colour face with secondary colour facing outward"
+agenda-group "solve bottom edges"
+no-loop
+when
+    $edgePiece: CubePiece(getBottomColour() != baseColour, getTopColour() != baseColour)
+    $secondaryColourPieceLocation: RubiksDirection($edgePiece.get(this) != baseColour) from $edgePiece.keySet()
+    $secondaryColour: RubiksColour() from $edgePiece.get($secondaryColourPieceLocation)
+    $secondaryColourCubeLocation: RubiksDirection($edgePiece.get(this) == RubiksColour.NO_COLOUR, $oppositeLocation: getOppositeDirection()) from colourToDirectionMap.get($secondaryColour)
+    RubiksColour(this != baseColour) from $edgePiece.get($oppositeLocation)
+    $baseColourPieceDirection: RubiksDirection($edgePiece.get(this) == baseColour) from $edgePiece.keySet()
+then
+    String move = Rotator.getRotationNeeded($baseColourPieceDirection,$secondaryColourPieceLocation,(RubiksDirection)$secondaryColourCubeLocation);
+    Rotator.rotateFace(cube,move);
+    movesExecuted.addMove(phase,move);
+    System.out.println(move +"\n" + drools.getRule().getName());
+    update($edgePiece);
+end
+
+rule "Edge piece is on bottom with secondary colour facing down"
+agenda-group "solve bottom edges"
+no-loop
+when
+    $edgePiece: CubePiece($secondaryColour: getBottomColour(), $secondaryColour != baseColour, $secondaryColour != RubiksColour.NO_COLOUR)
+    $baseColourDirection: RubiksDirection($edgePiece.get(this) == baseColour) from $edgePiece.keySet()
+then
+    String move = $baseColourDirection.getMoveLetter() + "2";
+    Rotator.rotateFace(cube,move);
+    movesExecuted.addMove(phase,move);
+    System.out.println(move +"\n" + drools.getRule().getName());
+    update($edgePiece);
+end
+
+rule "Edge piece is on top and not adjacent to secondary colour face with secondary colour facing up"
+agenda-group "solve bottom edges"
+no-loop
+when
+    $edgePiece: CubePiece($secondaryColour: getTopColour(), $secondaryColour != RubiksColour.NO_COLOUR, $secondaryColour != baseColour)
+    $secondaryColourCubeDirection: RubiksDirection() from colourToDirectionMap.get($secondaryColour)
+    Boolean(booleanValue() == true) from $edgePiece.get($secondaryColourCubeDirection.getOppositeDirection()) == baseColour
+                                        || $edgePiece.get($secondaryColourCubeDirection) == baseColour
+then
+    String move = "U";
+    Rotator.rotateFace(cube,move);
+    movesExecuted.addMove(phase,move);
+    System.out.println(move +"\n" + drools.getRule().getName());
+    update($edgePiece);
+end
+
+rule "Secondary colour facing side adjacent to secondary colour cube direction and not on top"
+agenda-group "solve bottom edges"
+no-loop
+when
+    $edgePiece: CubePiece(getTopColour() == RubiksColour.NO_COLOUR, getBottomColour() == RubiksColour.NO_COLOUR)
+    $secondaryColourPieceDirection: RubiksDirection($edgePiece.get(this) != baseColour ) from $edgePiece.keySet()
+    $secondaryColour: RubiksColour() from $edgePiece.get($secondaryColourPieceDirection)
+    $baseColourPieceDirection: RubiksDirection($edgePiece.get(this) == baseColour, directionToColourMap.get(this) == $secondaryColour
+                                    || directionToColourMap.get(getOppositeDirection()) == $secondaryColour) from $edgePiece.keySet()
+then
+    String move = Rotator.getRotationNeeded($secondaryColourPieceDirection,$baseColourPieceDirection,RubiksDirection.UP);
+    Rotator.rotateFace(cube,move);
+    movesExecuted.addMove(phase,move);
+    System.out.println(move +"\n" + drools.getRule().getName());
+    update($edgePiece);
+end
+
+rule "Bottom corner piece not in place"
+agenda-group "get bottom corner pieces not in place"
+when
+    $cube: Cube()
+    $allPieces: Object() from $cube.getAllPiecesList()
+    $baseCornerPiece: CubePiece(getPieceType() == CubePiece.CORNER_PIECE, containsValue(baseColour)) from $allPieces
+    not($firstMatchingDirection: RubiksDirection($baseCornerPiece.get(this) == directionToColourMap.get(this)) from $baseCornerPiece.keySet() and
+        $secondMatchingDirection: RubiksDirection(this != $firstMatchingDirection,$baseCornerPiece.get(this) == directionToColourMap.get(this)) from $baseCornerPiece.keySet() and
+        RubiksDirection(this != $firstMatchingDirection, this != $secondMatchingDirection, $baseCornerPiece.get(this) == directionToColourMap.get(this)) from $baseCornerPiece.keySet())
+then
+    System.out.println("adding corner piece" + $baseCornerPiece.toString());
+    piecesNotInPlace.add($baseCornerPiece);
+    retract($cube);
+end
+
+rule "Piece is directly above position with base colour not up"
+
+salience 1000
+agenda-group "solve bottom corners"
+when
+    $cornerPiece: CubePiece($keySet: keySet(), $colours: values(), $topColour: getTopColour(), $topColour != RubiksColour.NO_COLOUR, $topColour != baseColour)
+    $sideColourPieceDirection: RubiksDirection(this != RubiksDirection.UP) from $keySet
+    $sideColour: RubiksColour($sideColour != baseColour, this == directionToColourMap.get($sideColourPieceDirection)) from $cornerPiece.get($sideColourPieceDirection)
+
+    $baseColourPieceDirection: RubiksDirection(this != RubiksDirection.UP, this != $sideColourPieceDirection) from $keySet
+then
+    String move1 = Rotator.getRotationNeeded($baseColourPieceDirection, $sideColourPieceDirection, RubiksDirection.UP);
+    String move2 = Rotator.getRotationNeeded(RubiksDirection.UP, $baseColourPieceDirection, $sideColourPieceDirection);
+    String move3 = Rotator.getOppositeRotation(move1);
+    Rotator.rotateFace(cube,move1, move2, move3);
+
+    movesExecuted.addAllMoves(phase, move1, move2, move3);
+    System.out.println(move1 + move2 + move3 + drools.getRule().getName());
+    retract($cornerPiece);
+end
+
+rule "Piece is on top with base not on top and not on side that is rotated"
+salience 1000
+agenda-group "solve bottom corners"
+when
+    $cornerPiece: CubePiece($keySet: keySet(), $colours: values(), $topColour: getTopColour(), $topColour != RubiksColour.NO_COLOUR, $topColour != baseColour)
+    $sideColour: RubiksColour(this != $topColour, this != baseColour) from $colours
+    $sideColourPieceDirection: RubiksDirection($cornerPiece.get(this) == $sideColour) from $keySet
+    $sideColourCubeDirection: RubiksDirection($cornerPiece.get(this) == RubiksColour.NO_COLOUR) from colourToDirectionMap.get($sideColour)
+    $baseColourPieceDirection: RubiksDirection(this != RubiksDirection.UP, this != $sideColourPieceDirection) from $keySet
+then
+    RubiksDirection topColourCubeDirection = (RubiksDirection) colourToDirectionMap.get($topColour);
+    String move1 = Rotator.getRotationNeeded($sideColourCubeDirection, RubiksDirection.DOWN, topColourCubeDirection);
+    String move2 = Rotator.getRotationNeeded(RubiksDirection.UP, $baseColourPieceDirection, topColourCubeDirection);
+    String move3 = Rotator.getOppositeRotation(move1);
+    Rotator.rotateFace(cube,move1, move2, move3);
+
+    movesExecuted.addAllMoves(phase, move1, move2, move3);
+    System.out.println(move1 + move2 + move3 + drools.getRule().getName());
+    retract($cornerPiece);
+end
+
+rule "Piece is directly above position with base colour facing up"
+no-loop
+salience 900
+agenda-group "solve bottom corners"
+when
+    $cornerPiece: CubePiece(getTopColour() == baseColour, $colours: values(), $keySet: keySet())
+    $sideColourDirection1: RubiksDirection(this != RubiksDirection.UP) from $keySet
+    $sideColourDirection2: RubiksDirection(this != RubiksDirection.UP, this != $sideColourDirection1) from $keySet
+    $pieceDirectionColour1: RubiksColour(this == directionToColourMap.get($sideColourDirection2)) from $cornerPiece.get($sideColourDirection1)
+    $pieceDirectionColour2: RubiksColour(this == directionToColourMap.get($sideColourDirection1)) from $cornerPiece.get($sideColourDirection2)
+//        Boolean(booleanValue() == true) from $pieceDirectionColour1 == directionToColourMap.get($sideColourDirection2)
+//                                            && $pieceDirectionColour2 == directionToColourMap.get($sideColourDirection1)
+then
+    String move1 = Rotator.getRotationNeeded($sideColourDirection1, $sideColourDirection2, RubiksDirection.UP);
+    String move2 = "U2";
+    String move3 = Rotator.getOppositeRotation(move1);
+    Rotator.rotateFace(cube,move1, move2, move3);
+
+    movesExecuted.addAllMoves(phase, move1, move2, move3);
+    System.out.println(move1 + move2 + move3 + drools.getRule().getName());
+    update($cornerPiece);
+end
+
+rule "Piece is on top but needs to be moved to correct position"
+no-loop
+salience 800
+agenda-group "solve bottom corners"
+when
+    $cornerPiece: CubePiece($topColour: getTopColour(), $topColour != RubiksColour.NO_COLOUR, $topColour != baseColour, $keySet: keySet(), $colours: values())
+    $sideColour: RubiksColour(this != $topColour, this != baseColour) from $colours
+    $baseColourPieceDirection: RubiksDirection($cornerPiece.get(this) == baseColour, directionToColourMap.get(this) == $sideColour) from $keySet
+then
+    String move = "U2";
+    Rotator.rotateFace(cube,move);
+    movesExecuted.addMove(phase,move);
+    System.out.println(move + drools.getRule().getName());
+    update($cornerPiece);
+end
+
+rule "Piece is on bottom"
+no-loop
+salience 700
+agenda-group "solve bottom corners"
+when
+    $cornerPiece: CubePiece(getBottomColour() != RubiksColour.NO_COLOUR, $keySet: keySet())
+    $side1: RubiksDirection($cornerPiece.get(this) != baseColour, this != RubiksDirection.DOWN) from $keySet
+    $side2: RubiksDirection(this != $side1, this != RubiksDirection.DOWN) from $keySet
+then
+    String move1 = Rotator.getRotationNeeded($side2,RubiksDirection.DOWN,$side1);
+    String move2 = "U2";
+    String move3 =  Rotator.getOppositeRotation(move1);
+    Rotator.rotateFace(cube,move1,move2,move3);
+
+    movesExecuted.addAllMoves(phase, move1, move2, move3);
+    System.out.println(move1 + move2 + move3 + drools.getRule().getName());
+    update($cornerPiece);
+end
+
+rule "Piece is on top but needs to be moved to correct position and base colour is up"
+no-loop
+salience 700
+agenda-group "solve bottom corners"
+when
+    $cornerPiece: CubePiece($topColour: getTopColour(), $topColour == baseColour, $keySet: keySet(), $colours: values())
+    $sideColour1: RubiksColour(this != $topColour) from $colours
+    $sideColour2PieceDirection: RubiksDirection($cornerPiece.get(this) != $topColour, $cornerPiece.get(this)!= $sideColour1) from $keySet
+    $sideColour1CubeDirection: RubiksDirection(this != $sideColour2PieceDirection) from colourToDirectionMap.get($sideColour1)
+then
+    String move = Rotator.getRotationNeeded(RubiksDirection.UP, $sideColour2PieceDirection, $sideColour1CubeDirection);
+    Rotator.rotateFace(cube,move);
+    movesExecuted.addMove(phase,move);
+    System.out.println(move + drools.getRule().getName());
+    update($cornerPiece);
+end
+
+//CREATE RULE FOR IF BASE COLOUR ON TOP BUT PIECE IS NOT IN CORRECT POSITION TO SAVE 3 MOVES
+
+rule "Middle edge piece not in place"
+agenda-group "get middle edge pieces not in place"
+when
+    $cube: Cube()
+    $allPieces: Object() from $cube.getAllPiecesList()
+    $middleEdgePiece: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, getBottomColour() == RubiksColour.NO_COLOUR, $keySet: keySet(), !containsValue(directionToColourMap.get(RubiksDirection.UP))) from $allPieces
+    not($firstMatchingDirection: RubiksDirection($middleEdgePiece.get(this) == directionToColourMap.get(this)) from $keySet and
+            $secondMatchingDirection: RubiksDirection(this != $firstMatchingDirection,$middleEdgePiece.get(this) == directionToColourMap.get(this)) from $keySet)
+then
+    System.out.println("adding middle edge piece" + $middleEdgePiece.toString());
+    piecesNotInPlace.add($middleEdgePiece);
+    retract($cube);
+end
+
+rule "Piece is in place to be solved"
+no-loop
+salience 1000
+agenda-group "solve middle edges"
+when
+    $piece: CubePiece($topColour: getTopColour(), $topColour != RubiksColour.NO_COLOUR, $keySet: keySet())
+    $otherColourPieceDirection: RubiksDirection(this != RubiksDirection.UP,$pieceOpposite: getOppositeDirection(), $pieceOpposite == colourToDirectionMap.get($topColour)) from $keySet
+then
+    RubiksDirection sideColourCubeDirection = (RubiksDirection) colourToDirectionMap.get($piece.get($otherColourPieceDirection));
+    String move1 = Rotator.getRotationNeeded($pieceOpposite, sideColourCubeDirection, RubiksDirection.UP);
+    String move2 = Rotator.getRotationNeeded(RubiksDirection.UP,$otherColourPieceDirection, sideColourCubeDirection);
+    String move3 = Rotator.getOppositeRotation(move1);
+    String move4 = move2;
+    String move5 = Rotator.getRotationNeeded(sideColourCubeDirection, RubiksDirection.UP, $otherColourPieceDirection);
+    String move6 = Rotator.getOppositeRotation(move2);
+    String move7 = Rotator.getOppositeRotation(move5);
+
+    Rotator.rotateFace(cube, move1,move2,move3,move4,move5,move6,move7);
+    movesExecuted.addAllMoves(phase, move1, move2, move3, move4, move5, move6, move7);
+    System.out.println(move1 + move2 + move3 + move4 + move5 + move6+ move7 + drools.getRule().getName());
+    retract($piece);
+end
+
+rule "Piece is not in place but on top"
+no-loop
+salience 900
+agenda-group "solve middle edges"
+when
+    $piece: CubePiece($topColour: getTopColour(), $topColour != RubiksColour.NO_COLOUR, $keySet: keySet())
+    $otherColourPieceDirection: RubiksDirection(this != RubiksDirection.UP, $pieceOpposite: getOppositeDirection()) from $keySet
+    $oppositeSide: RubiksDirection(this != $pieceOpposite) from colourToDirectionMap.get($topColour)
+then
+    System.out.println($piece + "\n" + $otherColourPieceDirection + $pieceOpposite + $oppositeSide);
+    String move1 = Rotator.getRotationNeeded(RubiksDirection.UP,$pieceOpposite,$oppositeSide);
+    Rotator.rotateFace(cube, move1);
+    movesExecuted.addMove(phase,move1);
+    System.out.println(move1 + drools.getRule().getName());
+    update($piece);
+end
+
+rule "Piece is not on top"
+no-loop
+salience 800
+agenda-group "solve middle edges"
+when
+    $piece: CubePiece(getTopColour() == RubiksColour.NO_COLOUR, $keySet: keySet())
+    $pieceSide1: RubiksDirection() from $keySet
+    $pieceSide2: RubiksDirection(this != $pieceSide1) from $keySet
+then
+    String move1 = Rotator.getRotationNeeded($pieceSide1, $pieceSide2, RubiksDirection.UP);
+    String move2 = Rotator.getRotationNeeded(RubiksDirection.UP,$pieceSide2, $pieceSide1);
+    String move3 = Rotator.getOppositeRotation(move1);
+    String move4 = move2;
+    String move5 = Rotator.getRotationNeeded($pieceSide2, $pieceSide1,RubiksDirection.UP);
+    String move6 = Rotator.getOppositeRotation(move2);
+    String move7 = Rotator.getOppositeRotation(move5);
+
+    Rotator.rotateFace(cube, move1,move2,move3,move4,move5,move6,move7);
+    movesExecuted.addAllMoves(phase, move1, move2, move3, move4, move5, move6, move7);
+    System.out.println(move1 + move2 + move3 + move4 + move5 + move6+ move7 + drools.getRule().getName());
+    update($piece);
+end
+
+rule "cross already solved"
+salience 1000
+agenda-group "solve top cross"
+when
+    $cube: Cube($allPieces: getAllPiecesList())
+    not(
+        $piece: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, containsValue(topColour)) from $allPieces and
+        RubiksColour(this != $piece.getTopColour()) from topColour
+    )
+then
+    System.out.println(drools.getRule().getName());
+    retract($cube);
+end
+
+rule "straight line across"
+salience 900
+agenda-group "solve top cross"
+when
+    $cube: Cube($allPieces: getAllPiecesList())
+    $piece1: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, containsValue(topColour)) from $allPieces
+    $side1: RubiksDirection(this != RubiksDirection.UP, $opposite1: getOppositeDirection()) from $piece1.keySet()
+    $piece2: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, this != $piece1, containsValue(topColour), $keySet2: keySet()) from $allPieces
+    RubiksColour(this != RubiksColour.NO_COLOUR) from $piece2.get($opposite1)
+    RubiksColour(this == $piece1.getTopColour(), this == $piece2.getTopColour()) from topColour
+    $sideNotBeingUsed: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP, this != $side1, this != $opposite1) from directionToColourMap.keySet()
+then
+    String move1 = Rotator.getRotationNeeded($sideNotBeingUsed, $side1, RubiksDirection.UP);
+    String move2 = Rotator.getRotationNeeded($opposite1, $sideNotBeingUsed, RubiksDirection.UP);
+    String move3 = Rotator.getRotationNeeded(RubiksDirection.UP, $sideNotBeingUsed, $side1);
+    String move4 = Rotator.getOppositeRotation(move2);
+    String move5 = Rotator.getOppositeRotation(move3);
+    String move6 = Rotator.getOppositeRotation(move1);
+
+    Rotator.rotateFace(cube, move1,move2,move3,move4,move5,move6);
+    movesExecuted.addAllMoves(phase, move1, move2, move3, move4, move5, move6);
+    System.out.println(move1 + move2 + move3 + move4 + move5 + move6 + drools.getRule().getName());
+    retract($cube);
+end
+
+rule "L shape"
+salience 800
+agenda-group "solve top cross"
+when
+    $cube: Cube($allPieces: getAllPiecesList())
+    $piece1: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, containsValue(topColour)) from $allPieces
+    $side1: RubiksDirection(this != RubiksDirection.UP, $opposite1: getOppositeDirection()) from $piece1.keySet()
+    $piece2: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, this != $piece1, containsValue(topColour), $keySet2: keySet()) from $allPieces
+    $side2: RubiksDirection(this != RubiksDirection.UP) from $keySet2
+    RubiksColour(this == RubiksColour.NO_COLOUR) from $piece2.get($opposite1)
+    RubiksColour(this == $piece1.getTopColour(), this == $piece2.getTopColour()) from topColour
+then
+    System.out.print($side1.toString() + $side2.toString());
+    String move1 = Rotator.getRotationNeeded($side2.getOppositeDirection(),$side1, RubiksDirection.UP);
+    String move2 = Rotator.getRotationNeeded($opposite1, RubiksDirection.UP, $side2);
+    String move3 = Rotator.getRotationNeeded(RubiksDirection.UP, $side1, $side2);
+    String move4 = Rotator.getOppositeRotation(move2);
+    String move5 = Rotator.getOppositeRotation(move3);
+    String move6 = move2;
+    String move7 = move3;
+    String move8 = move4;
+    String move9 = move5;
+    String move10 = Rotator.getOppositeRotation(move1);
+
+    Rotator.rotateFace(cube, move1,move2,move3,move4,move5,move6,move7,move8,move9,move10);
+    movesExecuted.addAllMoves(phase, move1,move2,move3,move4,move5,move6,move7,move8,move9,move10);
+    System.out.println(move1 + move2 + move3 + move4 + move5 + move6 + move7+ move8+ move9 + move10 + drools.getRule().getName());
+    retract($cube);
+end
+
+rule "Just the center piece"
+salience 700
+no-loop
+agenda-group "solve top cross"
+when
+    $cube: Cube($allPieces: getAllPiecesList())
+    not(
+        $piece1: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, containsValue(topColour)) from $allPieces and
+        $piece2: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, this != $piece1, containsValue(topColour), $keySet2: keySet()) from $allPieces and
+        RubiksColour(this == $piece1.getTopColour(), this == $piece2.getTopColour()) from topColour
+    )
+then
+    String move1 = "F";
+    String move2 = "R";
+    String move3 = "U";
+    String move4 = Rotator.getOppositeRotation(move2);
+    String move5 = Rotator.getOppositeRotation(move3);
+    String move6 = Rotator.getOppositeRotation(move1);
+
+    Rotator.rotateFace(cube, move1,move2,move3,move4,move5,move6);
+    movesExecuted.addAllMoves(phase, move1, move2, move3, move4, move5, move6);
+    System.out.println(move1 + move2 + move3 + move4 + move5 + move6 + drools.getRule().getName());
+    update($cube);
+end
+
+rule "all top edges in right order"
+salience 1000
+agenda-group "solve top edges"
+when
+    $cube: Cube($allPieces : getAllPiecesList())
+    $piece1: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, $keySet1: keySet()) from $allPieces
+    $side1: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from $keySet1
+    $cubeSide1: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from colourToDirectionMap.get($piece1.get($side1))
+    $rotationNeeded1: String() from Rotator.getRotationNeeded(RubiksDirection.UP, $side1, $cubeSide1)
+
+    $piece2: CubePiece(this != $piece1, getPieceType() == CubePiece.EDGE_PIECE, $keySet2: keySet()) from $allPieces
+    $side2: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from $keySet2
+    $cubeSide2: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from colourToDirectionMap.get($piece2.get($side2))
+    $rotationNeeded2: String(this == $rotationNeeded1) from Rotator.getRotationNeeded(RubiksDirection.UP, $side2, $cubeSide2)
+
+    $piece3: CubePiece(this != $piece1, this != $piece2, getPieceType() == CubePiece.EDGE_PIECE, $keySet3: keySet()) from $allPieces
+    $side3: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from $keySet3
+    $cubeSide3: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from colourToDirectionMap.get($piece3.get($side3))
+    $rotationNeeded3: String(this == $rotationNeeded1, this == $rotationNeeded2) from Rotator.getRotationNeeded(RubiksDirection.UP, $side3, $cubeSide3)
+
+    $piece4: CubePiece(this != $piece1, this != $piece2, this != $piece3, getPieceType() == CubePiece.EDGE_PIECE, $keySet4: keySet()) from $allPieces
+    $side4: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from $keySet4
+    $cubeSide4: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from colourToDirectionMap.get($piece4.get($side4))
+    $rotationNeeded4: String(this == $rotationNeeded1, this == $rotationNeeded2, this == $rotationNeeded3) from Rotator.getRotationNeeded(RubiksDirection.UP, $side4, $cubeSide4)
+
+    RubiksColour(this == $piece1.getTopColour, this == $piece2.getTopColour(), this == $piece3.getTopColour(), this == $piece4.getTopColour()) from topColour
+then
+    Rotator.rotateFace(cube, $rotationNeeded1);
+    movesExecuted.addMove(phase,$rotationNeeded1);
+    System.out.println($rotationNeeded1 + drools.getRule().getName());
+    retract($cube);
+end
+
+rule "two top edges in right order"
+salience 900
+no-loop
+agenda-group "solve top edges"
+when
+    $cube: Cube($allPieces : getAllPiecesList())
+
+    $piece1: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, $keySet1: keySet()) from $allPieces
+    $side1: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from $keySet1
+    $cubeSide1: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from colourToDirectionMap.get($piece1.get($side1))
+    $rotationNeeded1: String() from Rotator.getRotationNeeded(RubiksDirection.UP, $side1, $cubeSide1)
+
+    $piece2: CubePiece(this != $piece1, getPieceType() == CubePiece.EDGE_PIECE, $keySet2: keySet()) from $allPieces
+    $side2: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP, this != $side1.getOppositeDirection()) from $keySet2
+    $cubeSide2: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from colourToDirectionMap.get($piece2.get($side2))
+    $rotationNeeded2: String(this == $rotationNeeded1) from Rotator.getRotationNeeded(RubiksDirection.UP, $side2, $cubeSide2)
+
+    $piece3: CubePiece(this != $piece1, this != $piece2, getPieceType() == CubePiece.EDGE_PIECE, $keySet3: keySet()) from $allPieces
+    $side3: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from $keySet3
+    $cubeSide3: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from colourToDirectionMap.get($piece3.get($side3))
+
+    RubiksColour(this == $piece1.getTopColour(), this == $piece2.getTopColour(), this == $piece3.getTopColour()) from topColour
+    $rotationNeeded3: String(this != $rotationNeeded1, this != $rotationNeeded2) from Rotator.getRotationNeeded(RubiksDirection.UP, $side3, $cubeSide3)
+
+then
+    String move1 = $rotationNeeded1;
+    String move2 = Rotator.getRotationNeeded($side2, RubiksDirection.UP, $side1);
+    String move3 = Rotator.getRotationNeeded(RubiksDirection.UP, $side1, $side2);
+    String move4 = Rotator.getOppositeRotation(move2);
+    String move5 = move3;
+    String move6 = move2;
+    String move7 = "U2";
+    String move8 = move4;
+    String move9 = move3;
+    Rotator.rotateFace(cube, move1,move2,move3,move4,move5,move6,move7,move8,move9);
+    movesExecuted.addAllMoves(phase, move1,move2,move3,move4,move5,move6,move7,move8,move9);
+    System.out.println(move1 + move2 + move3 + move4 + move5 + move6 + move7+ move8+ move9 + drools.getRule().getName());
+    retract($cube);
+end
+
+rule "two top edges not in right order"
+agenda-group "solve top edges"
+no-loop
+when
+    $cube: Cube($allPieces : getAllPiecesList())
+    not(
+        $piece1: CubePiece(getPieceType() == CubePiece.EDGE_PIECE, $keySet1: keySet()) from $allPieces and
+        $side1: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from $keySet1 and
+        $cubeSide1: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from colourToDirectionMap.get($piece1.get($side1)) and
+        $rotationNeeded1: String() from Rotator.getRotationNeeded(RubiksDirection.UP, $side1, $cubeSide1) and
+
+        $piece2: CubePiece(this != $piece1, getPieceType() == CubePiece.EDGE_PIECE, $keySet2: keySet()) from $allPieces and
+        $side2: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP, this != $side1.getOppositeDirection()) from $keySet2 and
+        $cubeSide2: RubiksDirection(this != RubiksDirection.DOWN, this != RubiksDirection.UP) from colourToDirectionMap.get($piece2.get($side2)) and
+        $rotationNeeded2: String(this == $rotationNeeded1) from Rotator.getRotationNeeded(RubiksDirection.UP, $side2, $cubeSide2) and
+
+        RubiksColour(this == $piece1.getTopColour(), this == $piece2.getTopColour()) from topColour
+    )
+then
+    String move1 = "R";
+    String move2 = "U";
+    String move3 = Rotator.getOppositeRotation(move1);
+    String move4 = move2;
+    String move5 = move1;
+    String move6 = "U2";
+    String move7 = move3;
+
+    Rotator.rotateFace(cube, move1,move2,move3,move4,move5,move6,move7);
+    movesExecuted.addAllMoves(phase, move1,move2,move3,move4,move5,move6,move7);
+    System.out.println(move1 + move2 + move3 + move4 + move5 + move6 + move7 + drools.getRule().getName());
+    update($cube);
+end
+
+rule "get corners orientation majority"
+agenda-group "get top corner orientations"
+no-loop
+when
+then
+
+end
+
+

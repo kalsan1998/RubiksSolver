@@ -189,7 +189,7 @@ public class RubiksServlet extends HttpServlet{
             cube.setBottom(bottom);
             RubiksResults results = new RubiksResults();
 
-            new Solver(cube,results).solveCube();
+            new Solver(cube,results,15000).solveCube();
 
             req.setAttribute("movesList", results);
             RequestDispatcher dispatcher = req.getRequestDispatcher("/");

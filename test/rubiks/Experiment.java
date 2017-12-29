@@ -13,7 +13,7 @@ public class Experiment {
            RubiksResults moves = new RubiksResults();
            Cube cube = new TestingCube(1);
 
-           Solver solver = new Solver(cube,moves);
+           Solver solver = new Solver(cube,moves,2000);
            solver.solveCube();
            return;
        }catch (Exception e){

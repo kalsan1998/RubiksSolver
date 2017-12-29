@@ -9,10 +9,7 @@ import rubiks.util.RubiksCubeException;
 import rubiks.util.RubiksCubeValidator;
 import rubiks.util.RubiksDirection;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by Kaan on 2017-07-28.
@@ -27,7 +24,6 @@ public class Solver {
     protected Map<RubiksDirection,RubiksColour> directionToColourMap = new HashMap<>();
     protected Map<RubiksColour,RubiksDirection> colourToDirectionMap = new HashMap<>();
     protected Cube cube;
-    
 
     private static final String getMiddleEdgePieces = "get bottom edge pieces not in place";
     private static final String getCornerPieces = "get bottom corner pieces not in place";
@@ -38,14 +34,18 @@ public class Solver {
     private static final String solveTopCross = "solve top cross";
     private static final String solveTopEdges = "solve top edges";
 
+    private long allowedRuntimeMilliseconds;
+    private boolean isComplete = false;
 
-    public Solver(Cube cube, RubiksResults movesExecuted){
+
+    public Solver(Cube cube, RubiksResults movesExecuted, long allowedRuntimeMilliseconds){
         this.cube = cube;
         this.directionToColourMap = cube.getDirectionToColourMap();
         this.colourToDirectionMap = cube.getColourToDirectionMap();
         bottomColour = directionToColourMap.get(RubiksDirection.DOWN);
         topColour = directionToColourMap.get(RubiksDirection.UP);
         this.movesExecuted = movesExecuted;
+        this.allowedRuntimeMilliseconds = allowedRuntimeMilliseconds;
     }
 
     public Cube solveCube(){
@@ -56,24 +56,46 @@ public class Solver {
             movesExecuted.addMessage("error", "Cube not valid: "+ e.getMessage());
         }
         if(cubeValid) {
-            try {
-                solvePiecesPhase(getMiddleEdgePieces, solveBottomEdgePiece);
-                System.out.println("-------------------------------\n BOTTOM EDGES SOLVED \n-------------------------------");
-                movesExecuted.addMessage(solveBottomEdgePiece, "COMPLETED BOTTOM EDGES");
-                solvePiecesPhase(getCornerPieces, solveCornerPiece);
-                movesExecuted.addMessage(solveCornerPiece, "COMPLETED BOTTOM CORNERS");
-                System.out.println("-------------------------------\n BOTTOM CORNERS SOLVED \n-------------------------------");
-                solvePiecesPhase(getMiddlePieces, solveMiddleEdgePiece);
-                movesExecuted.addMessage(solveMiddleEdgePiece, "COMPLETED MIDDLE EDGES");
-                System.out.println("-------------------------------\n MIDDLE EDGES SOLVED \n-------------------------------");
-                solveCubePhase(solveTopCross);
-                movesExecuted.addMessage(solveTopCross, "COMPLETED TOP CROSS");
-                System.out.println("-------------------------------\n TOP CROSS SOLVED \n-------------------------------");
-                solveCubePhase(solveTopEdges);
-                movesExecuted.addMessage(solveTopEdges, "COMPLETED TOP EDGES");
-                System.out.println("-------------------------------\n TOP EDGES SOLVED \n-------------------------------");
-            }catch (Exception e) {
-                movesExecuted.addMessage("error", "Invalid cube layout");
+            Thread solve = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        solvePiecesPhase(getMiddleEdgePieces, solveBottomEdgePiece);
+                        System.out.println("-------------------------------\n BOTTOM EDGES SOLVED \n-------------------------------");
+                        movesExecuted.addMessage(solveBottomEdgePiece, "COMPLETED BOTTOM EDGES");
+                        solvePiecesPhase(getCornerPieces, solveCornerPiece);
+                        movesExecuted.addMessage(solveCornerPiece, "COMPLETED BOTTOM CORNERS");
+                        System.out.println("-------------------------------\n BOTTOM CORNERS SOLVED \n-------------------------------");
+                        solvePiecesPhase(getMiddlePieces, solveMiddleEdgePiece);
+                        movesExecuted.addMessage(solveMiddleEdgePiece, "COMPLETED MIDDLE EDGES");
+                        System.out.println("-------------------------------\n MIDDLE EDGES SOLVED \n-------------------------------");
+                        solveCubePhase(solveTopCross);
+                        movesExecuted.addMessage(solveTopCross, "COMPLETED TOP CROSS");
+                        System.out.println("-------------------------------\n TOP CROSS SOLVED \n-------------------------------");
+                        solveCubePhase(solveTopEdges);
+                        movesExecuted.addMessage(solveTopEdges, "COMPLETED TOP EDGES");
+                        System.out.println("-------------------------------\n TOP EDGES SOLVED \n-------------------------------");
+                    }catch (Exception e) {
+                        movesExecuted.addMessage("error", "Invalid cube layout. Make sure colours were inputted correctly.");
+                    }
+                    isComplete = true;
+                }
+            });
+            solve.start();
+            Long startTime = new Date().getTime();
+            Long currentTime = new Date().getTime();
+            while(!isComplete) {
+                if((currentTime - allowedRuntimeMilliseconds) > startTime) {
+                    movesExecuted.addMessage("error", "Invalid cube layout. Make sure colours were inputted correctly.");
+                    solve.stop();
+                    break;
+                }
+                try{
+                    Thread.sleep(500);
+                }catch (Exception e) {
+                    e.printStackTrace();
+                }
+                currentTime = new Date().getTime();
             }
         }
         return cube;
