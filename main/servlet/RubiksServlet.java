@@ -51,6 +51,7 @@ public class RubiksServlet extends HttpServlet{
             Cube cube = new Cube();
 
 
+            //Manually set up the cube based on client input
             CubePiece topLeftFront = new CubePiece(CubePiece.CORNER_PIECE);
             topLeftFront.put(RubiksDirection.UP, getColourFromFaceAndPieceLocation(UP,BOTTOM_LEFT));
             topLeftFront.put(RubiksDirection.LEFT, getColourFromFaceAndPieceLocation(LEFT,TOP_RIGHT));
@@ -80,7 +81,6 @@ public class RubiksServlet extends HttpServlet{
             bottomLeftFront.put(RubiksDirection.LEFT, getColourFromFaceAndPieceLocation(LEFT,BOTTOM_RIGHT));
             bottomLeftFront.put(RubiksDirection.DOWN, getColourFromFaceAndPieceLocation(DOWN,TOP_LEFT));
             cube.setBottomLeftFront(bottomLeftFront);
-
 
             CubePiece bottomLeftBack = new CubePiece(CubePiece.CORNER_PIECE);
             bottomLeftBack.put(RubiksDirection.LEFT, getColourFromFaceAndPieceLocation(LEFT,BOTTOM_LEFT));
@@ -189,15 +189,14 @@ public class RubiksServlet extends HttpServlet{
             cube.setBottom(bottom);
             RubiksResults results = new RubiksResults();
 
-            new Solver(cube,results,15000).solveCube();
 
+            //Solve the cube
+            new Solver(cube,results,17500).solveCube();
+
+            //Save moves as list and forward to same page
             req.setAttribute("movesList", results);
             RequestDispatcher dispatcher = req.getRequestDispatcher("/");
             dispatcher.forward(req,resp);
-
-//            for(List<String> moveList : results.values()){
-//                for(String move: moveList) out.print("<br>"+ move);
-//            }
 
         }catch (Exception e){
             out.print("<h3>"+e+"</h3>");

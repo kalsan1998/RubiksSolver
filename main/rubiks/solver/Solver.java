@@ -35,7 +35,7 @@ public class Solver {
     private static final String solveTopEdges = "solve top edges";
 
     private long allowedRuntimeMilliseconds;
-    private boolean isComplete = false;
+    private volatile boolean isComplete = false;
 
 
     public Solver(Cube cube, RubiksResults movesExecuted, long allowedRuntimeMilliseconds){
@@ -87,7 +87,7 @@ public class Solver {
             while(!isComplete) {
                 if((currentTime - allowedRuntimeMilliseconds) > startTime) {
                     movesExecuted.addMessage("error", "Invalid cube layout. Make sure colours were inputted correctly.");
-                    solve.stop();
+                    isComplete = true;
                     break;
                 }
                 try{
@@ -102,11 +102,13 @@ public class Solver {
     }
 
     private Cube solveCubePhase(String phase){
-        initializeKieSession(phase);
-        kieSession.insert(cube);
-        kieSession.getAgenda().getAgendaGroup(phase).setFocus();
-        kieSession.fireAllRules();
-        kieSession.dispose();
+        if(!isComplete) {
+            initializeKieSession(phase);
+            kieSession.insert(cube);
+            kieSession.getAgenda().getAgendaGroup(phase).setFocus();
+            kieSession.fireAllRules();
+            kieSession.dispose();
+        }
         return cube;
     }
 
@@ -118,7 +120,7 @@ public class Solver {
         kieSession.insert(cube);
         kieSession.getAgenda().getAgendaGroup(find).setFocus();
         kieSession.fireAllRules();
-        while (!piecesNotInPlace.isEmpty()){
+        while (!piecesNotInPlace.isEmpty() && !isComplete){
             kieSession.insert(piecesNotInPlace.get(0));
             kieSession.getAgenda().getAgendaGroup(phase).setFocus();
             kieSession.fireAllRules();
@@ -144,15 +146,5 @@ public class Solver {
         kieSession.setGlobal("piecesNotInPlace", piecesNotInPlace);
         kieSession.setGlobal("phase", phase);
         isKieSessionInitialized = true;
-    }
-
-    private void insertAllPieces(){
-        for(CubePiece[][] cubePieces : cube.getPieces()){
-            for (CubePiece[] cubePieces1 : cubePieces){
-                for(CubePiece cubePiece : cubePieces1){
-                    kieSession.insert(cubePiece);
-                }
-            }
-        }
     }
 }
