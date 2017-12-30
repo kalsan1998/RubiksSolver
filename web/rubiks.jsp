@@ -7,6 +7,7 @@
     <script type="text/javascript" src="rubiks.js" async></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js" async></script>
     <link rel="stylesheet" href="rubiks.css"/>
+    <link rel="icon" href="img/rubik_s_cube_mixed.ico"/>
 </head>
     
     <%
@@ -44,17 +45,19 @@
             <input id="resetButton"  class="rubiksButton" type="button" value="Reset" onclick="resetFaces()"/>
         </div>
 
-        <div id="answerMoves">
-            <c:if test="${empty moves}">
-                <p>Cube is not solved</p>
-            </c:if>
-            <c:forEach var="phase" items="${moves}">
-                <c:forEach var="rotation" items="${phase.value}">
-                    <c:out value="${rotation}"/><br>
+        <div id="answerContainer">
+            <p class="answerHeader">Directions will be displayded here:</p>
+            <div id="answerMoves">
+                <c:if test="${empty moves}">
+                    <p>Cube is not solved</p>
+                </c:if>
+                <c:forEach var="phase" items="${moves}">
+                    <c:forEach var="rotation" items="${phase.value}">
+                        <c:out value="${rotation}"/><br>
+                    </c:forEach>
                 </c:forEach>
-            </c:forEach>
+            </div>
         </div>
-    </div>
     </div>
 
 </body>

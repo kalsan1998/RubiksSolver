@@ -8,7 +8,19 @@ window.onload = function () {
     for (i = 0; i < colourChoices.length; i++) {
         var colourChoice = colourChoices[i];
         colourChoice.onclick = function () {
-            selectedColour = this.style.backgroundColor;
+            var element = $(this);
+            selectedColour = element.css("backgroundColor");
+            colourChoices.css({
+                "border": "2px solid black",
+                "width": "50px",
+                "height": "50px"
+            });
+
+            element.css({
+                "border": "5px solid black",
+                "width": "45px",
+                "height": "45px"
+            });
         }
     }
 };
