@@ -477,7 +477,7 @@ when
     RubiksColour(this == $piece1.getTopColour, this == $piece2.getTopColour(), this == $piece3.getTopColour(), this == $piece4.getTopColour()) from topColour
 then
     Rotator.rotateFace(cube, $rotationNeeded1);
-    movesExecuted.addMove(phase,$rotationNeeded1);
+    if($rotationNeeded1.length() > 0) movesExecuted.addMove(phase,$rotationNeeded1);
     System.out.println($rotationNeeded1 + drools.getRule().getName());
     retract($cube);
 end

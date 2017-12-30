@@ -17,14 +17,44 @@
 <body>
 <c:set var="moves" scope="request" value="${requestScope.movesList}"/>
     <div id="page">
-    <div id="rubiksHeader">
-        <p>Kaan's Rubik's Cube Solver</p>
+        <div id="rubiksHeader">
+            <p>Kaan's Rubik's Cube Solver</p>
+            <div id="github">
+                <a href="https://github.com/kalsan1998/RubiksSolver"><img id="githubIcon" src="img/github-2048-black.png"/>GitHub Link</a>
+            </div>
 
-        <div id="rubiksSubHeader">
-            <p>Is it efficient?: No (work in progress)</p>
-            <p>Does it work?: Yes</p>
+            <div id="rubiksSubHeader">
+                <p>Is it efficient?: No (work in progress)</p>
+                <p>Does it work?: Yes</p>
+            </div>
         </div>
-    </div>
+        <div id="info">
+            <div id="instructions">
+                <h1>Instructions</h1>
+                <p>
+                    1) Click on the colour palette below to select a colour <br>
+                    2) Click on the tiles to change their colour to the selected colour<br>
+                    3) Input the cube you wish to solve, then click the solve button<br>
+                    <h3>NOTE: Make sure the inputted cube is a possible permutation for a Rubik's Cube</h3>
+                </p>
+            </div>
+            <div id="notation">
+                <h1>Notation</h1>
+                <h3>NOTE: Orientation is relative to the inputted cube. For the default cube, the <br>
+                    White face is considered the front, Green is the right, Orange is the bottom</h3>
+
+                <p>
+                    U = Rotate Top Face Clockwise<br>
+                    D = Rotate Bottom Face Clockwise<br>
+                    L = Rotate Left Face Clockwise<br>
+                    R = Rotate Right Face Clockwise<br>
+                    F = Rotate Front Face Clockwise<br>
+                    B = Rotate Front Face Clockwise<br><br>
+                    If the letter is followed by <h2 class="keyNotation"><u>'</u></h2>, then the rotation is counter clockwise instead.<br>
+                    If the letter is followed by <h2 class="keyNotation"><u>2</u></h2>, then the do 2 rotations instead.
+                </p>
+            </div>
+        </div>
     
     <div id="rubiksContainer">
         <div id="cubeLaidOutContainer">
