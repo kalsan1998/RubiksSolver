@@ -127,7 +127,14 @@ function getCubeJSON(){
         var piecesJSON = new Object();
         for(j = 0; j< pieces.length; j++){
             var piece = pieces[j];
-            piecesJSON[piece.location] = piece.div.style.backgroundColor;
+            var colour = piece.div.style.backgroundColor.toString();
+            if(colour === "rgb(255, 255, 255)") colour = "white";
+            if(colour === "rgb(0, 128, 0)") colour = "green";
+            if(colour === "rgb(0, 0, 255)") colour = "blue";
+            if(colour === "rgb(255, 0, 0)") colour = "red";
+            if(colour === "rgb(255, 255, 0)") colour = "yellow";
+            if(colour === "rgb(255, 165, 0)") colour = "orange";
+            piecesJSON[piece.location] = colour;
         }
         cube[face.location] = piecesJSON;
     }

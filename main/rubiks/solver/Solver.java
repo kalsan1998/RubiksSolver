@@ -85,7 +85,8 @@ public class Solver {
                         movesExecuted.addMessage(solveTopEdges, "The edge pieces on the top face should be solved now.\n");
                         System.out.println("-------------------------------\n TOP EDGES SOLVED \n-------------------------------");
                     }catch (Exception e) {
-                        movesExecuted.addMessage("error", "Invalid cube layout. Make sure colours were inputted correctly.");
+                        movesExecuted.clear();
+                        movesExecuted.addMessage("error", "Impossible cube layout. Make sure you input a solvable permutation.");
                     }
                     isComplete = true;
                 }
@@ -95,7 +96,8 @@ public class Solver {
             Long currentTime = new Date().getTime();
             while(!isComplete) {
                 if((currentTime - allowedRuntimeMilliseconds) > startTime) {
-                    movesExecuted.addMessage("error", "Invalid cube layout. Make sure colours were inputted correctly.");
+                    movesExecuted.clear();
+                    movesExecuted.addMessage("error", "Impossible cube layout. Make sure you input a solvable permutation.");
                     isComplete = true;
                     break;
                 }
