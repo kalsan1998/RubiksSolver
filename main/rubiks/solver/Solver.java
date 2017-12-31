@@ -60,27 +60,22 @@ public class Solver {
                 @Override
                 public void run() {
                     try {
-                        movesExecuted.addMessage(solveBottomEdgePiece, "PHASE 1:\n");
                         solvePiecesPhase(getMiddleEdgePieces, solveBottomEdgePiece);
                         System.out.println("-------------------------------\n BOTTOM EDGES SOLVED \n-------------------------------");
                         movesExecuted.addMessage(solveBottomEdgePiece, "The edge pieces on the bottom face should be solved now.\n");
 
-                        movesExecuted.addMessage(solveBottomEdgePiece, "PHASE 2:\n");
                         solvePiecesPhase(getCornerPieces, solveCornerPiece);
                         movesExecuted.addMessage(solveCornerPiece, "The entire bottom face should be solved now.\n");
                         System.out.println("-------------------------------\n BOTTOM CORNERS SOLVED \n-------------------------------");
 
-                        movesExecuted.addMessage(solveBottomEdgePiece, "PHASE 3:\n");
                         solvePiecesPhase(getMiddlePieces, solveMiddleEdgePiece);
                         movesExecuted.addMessage(solveMiddleEdgePiece, "The edges on the middle row should be solved now.\n");
                         System.out.println("-------------------------------\n MIDDLE EDGES SOLVED \n-------------------------------");
 
-                        movesExecuted.addMessage(solveBottomEdgePiece, "PHASE 4:\n");
                         solveCubePhase(solveTopCross);
                         movesExecuted.addMessage(solveTopCross, "The top face should have a cross now.\n");
                         System.out.println("-------------------------------\n TOP CROSS SOLVED \n-------------------------------");
 
-                        movesExecuted.addMessage(solveBottomEdgePiece, "PHASE 5:\n");
                         solveCubePhase(solveTopEdges);
                         movesExecuted.addMessage(solveTopEdges, "The edge pieces on the top face should be solved now.\n");
                         System.out.println("-------------------------------\n TOP EDGES SOLVED \n-------------------------------");
