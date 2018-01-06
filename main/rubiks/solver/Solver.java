@@ -73,7 +73,7 @@ public class Solver {
                         System.out.println("-------------------------------\n MIDDLE EDGES SOLVED \n-------------------------------");
 
                         solveCubePhase(solveTopCross);
-                        movesExecuted.addMessage(solveTopCross, "The top face should have a cross now.\n");
+                        movesExecuted.addMessage(solveTopCross, "The top face edges should be have the same upwards colour now.\n");
                         System.out.println("-------------------------------\n TOP CROSS SOLVED \n-------------------------------");
 
                         solveCubePhase(solveTopEdges);

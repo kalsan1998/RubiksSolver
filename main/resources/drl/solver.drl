@@ -559,8 +559,14 @@ rule "get corners orientation majority"
 agenda-group "get top corner orientations"
 no-loop
 when
+//    $cube: Cube($allPieces : getAllPiecesList())
+//    $piece: CubePiece(getPieceType() == CubePiece.CORNER_PIECE, $keys: keySet(),
+//            containsKey(RubiksDirection.UP), $pieceTopColour: getTopColour()) from $allPieces
+//    RubiksColour(this != topColour) from $pieceTopColour
+//    $side1: RubiksDirection(this != RubiksDirection.UP) from $keys
+//    $side2: RubiksDirection(this != RubiksDirection.UP, this != $side1) from $keys
 then
-
+//    CubePiece fixPositionPiece = getPiece(corner, too)
 end
 
 

@@ -24,8 +24,8 @@
             </div>
 
             <div id="rubiksSubHeader">
-                <p>Is it efficient?: No (work in progress)</p>
-                <p>Does it work?: Yes</p>
+                <p>Is it efficient?: No</p>
+                <p>Progress: Solves everything except top 4 corners (work in prgress)</p>
             </div>
         </div>
         <div id="info">
